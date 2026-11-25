@@ -1,0 +1,701 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user wallet balances, watch totals, streak, and daily earnings goal. Clients must submit FieldValue.serverTimestamp() for createdAt and updatedAt.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID matching the document ID."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "User Google account email."
+        },
+        "availableCents": {
+          "type": "integer",
+          "description": "Withdrawable cash balance in USD cents."
+        },
+        "lifetimeEarnedCents": {
+          "type": "integer",
+          "description": "Cumulative lifetime earnings in USD cents."
+        },
+        "totalWithdrawnCents": {
+          "type": "integer",
+          "description": "Cumulative withdrawn payouts in USD cents."
+        },
+        "totalAdsWatched": {
+          "type": "integer",
+          "description": "Total completed advert views."
+        },
+        "totalWatchSeconds": {
+          "type": "integer",
+          "description": "Total verified advert watch duration in seconds."
+        },
+        "dailyGoalCents": {
+          "type": "integer",
+          "description": "User daily earnings goal in USD cents."
+        },
+        "currentStreakDays": {
+          "type": "integer",
+          "description": "Consecutive calendar days with at least one completed advert watch."
+        },
+        "lastActiveDate": {
+          "type": "string",
+          "description": "Last active calendar date in YYYY-MM-DD format or empty string on creation."
+        },
+        "preferredCategories": {
+          "type": "array",
+          "description": "Ordered list of user-selected preferred advert categories used to prioritize the feed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of profile creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last profile update."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "email",
+        "availableCents",
+        "lifetimeEarnedCents",
+        "totalWithdrawnCents",
+        "totalAdsWatched",
+        "totalWatchSeconds",
+        "dailyGoalCents",
+        "currentStreakDays",
+        "lastActiveDate",
+        "preferredCategories",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdViewRecord": {
+      "title": "AdViewRecord",
+      "description": "Immutable record of a verified advert view and cash reward earned. Clients must submit FieldValue.serverTimestamp() for createdAt.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "campaignId": {
+          "type": "string",
+          "description": "Identifier of the watched advert campaign."
+        },
+        "campaignTitle": {
+          "type": "string",
+          "description": "Title of the advert campaign."
+        },
+        "sponsorName": {
+          "type": "string",
+          "description": "Brand or sponsor name."
+        },
+        "category": {
+          "type": "string",
+          "description": "Advert category for analytics breakdown."
+        },
+        "durationSeconds": {
+          "type": "integer",
+          "description": "Verified watch duration in seconds."
+        },
+        "rewardCents": {
+          "type": "integer",
+          "description": "Cash reward earned by viewer in USD cents."
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "Calendar date key YYYY-MM-DD."
+        },
+        "hourOfDay": {
+          "type": "integer",
+          "description": "Hour of day (0-23) when the advert completed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of completion."
+        }
+      },
+      "required": [
+        "userId",
+        "campaignId",
+        "campaignTitle",
+        "sponsorName",
+        "category",
+        "durationSeconds",
+        "rewardCents",
+        "dateKey",
+        "hourOfDay",
+        "createdAt"
+      ]
+    },
+    "DailyEarningsStat": {
+      "title": "DailyEarningsStat",
+      "description": "Per-day earnings and watch analytics summary keyed by YYYY-MM-DD. Clients must submit FieldValue.serverTimestamp() for createdAt and updatedAt.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "Calendar date key YYYY-MM-DD matching document ID."
+        },
+        "earnedCents": {
+          "type": "integer",
+          "description": "Total earnings on this date in USD cents."
+        },
+        "adsWatched": {
+          "type": "integer",
+          "description": "Number of adverts completed on this date."
+        },
+        "watchSeconds": {
+          "type": "integer",
+          "description": "Total watch seconds on this date."
+        },
+        "topCategory": {
+          "type": "string",
+          "description": "Primary advert category watched on this date."
+        },
+        "bonusCents": {
+          "type": "integer",
+          "description": "Daily goal or streak bonus cents earned on this date."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when daily stat was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when daily stat was updated."
+        }
+      },
+      "required": [
+        "userId",
+        "dateKey",
+        "earnedCents",
+        "adsWatched",
+        "watchSeconds",
+        "topCategory",
+        "bonusCents",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PayoutRecord": {
+      "title": "PayoutRecord",
+      "description": "Immutable cashout transaction request submitted by the user. Clients must submit FieldValue.serverTimestamp() for createdAt and updatedAt.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "amountCents": {
+          "type": "integer",
+          "description": "Withdrawal amount in USD cents (minimum 100)."
+        },
+        "method": {
+          "type": "string",
+          "enum": ["PAYPAL", "BANK_ACH", "VENMO", "GIFT_CARD"],
+          "description": "Cashout rail selected by the user."
+        },
+        "destinationLabel": {
+          "type": "string",
+          "description": "Masked or formatted payout destination."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PROCESSING", "COMPLETED", "CANCELLED"],
+          "description": "Current payout settlement status."
+        },
+        "referenceCode": {
+          "type": "string",
+          "description": "Unique payout reference identifier."
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "Calendar date key YYYY-MM-DD."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of payout request."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "userId",
+        "amountCents",
+        "method",
+        "destinationLabel",
+        "status",
+        "referenceCode",
+        "dateKey",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LinkedPaymentMethod": {
+      "title": "LinkedPaymentMethod",
+      "description": "User-linked preferred withdrawal account metadata with bank numbers masked to last-4 digits only. Clients must submit FieldValue.serverTimestamp() for createdAt and updatedAt.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "method": {
+          "type": "string",
+          "enum": ["PAYPAL", "BANK_ACH", "VENMO", "GIFT_CARD"],
+          "description": "Preferred cashout rail."
+        },
+        "accountHolderName": {
+          "type": "string",
+          "description": "Legal account holder or recipient name."
+        },
+        "maskedDestination": {
+          "type": "string",
+          "description": "Masked destination label shown in Wallet and payout receipts."
+        },
+        "bankName": {
+          "type": "string",
+          "description": "Financial institution name for BANK_ACH, empty otherwise."
+        },
+        "accountType": {
+          "type": "string",
+          "enum": ["", "CHECKING", "SAVINGS"],
+          "description": "Bank account type for BANK_ACH."
+        },
+        "accountLast4": {
+          "type": "string",
+          "description": "Last 4 digits of linked bank account for BANK_ACH, empty otherwise."
+        },
+        "routingLast4": {
+          "type": "string",
+          "description": "Last 4 digits of bank routing number for BANK_ACH, empty otherwise."
+        },
+        "autoPayoutEnabled": {
+          "type": "boolean",
+          "description": "Whether the user prefers this linked account pre-selected for cashouts."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when method was linked."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last settings update."
+        }
+      },
+      "required": [
+        "userId",
+        "method",
+        "accountHolderName",
+        "maskedDestination",
+        "bankName",
+        "accountType",
+        "accountLast4",
+        "routingLast4",
+        "autoPayoutEnabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OwnerRevenueSummary": {
+      "title": "OwnerRevenueSummary",
+      "description": "Singleton platform owner income summary accumulating net margin from every verified advert watch. Clients must submit FieldValue.serverTimestamp() for updatedAt.",
+      "type": "object",
+      "properties": {
+        "availableIncomeCents": {
+          "type": "integer",
+          "description": "Withdrawable net owner income balance in USD cents."
+        },
+        "lifetimeIncomeCents": {
+          "type": "integer",
+          "description": "Total cumulative net owner income earned in USD cents."
+        },
+        "withdrawnIncomeCents": {
+          "type": "integer",
+          "description": "Total income withdrawn by the app owner in USD cents."
+        },
+        "grossSponsorCents": {
+          "type": "integer",
+          "description": "Total gross advertiser spend generated across all users."
+        },
+        "totalUserRewardsCents": {
+          "type": "integer",
+          "description": "Total user cash rewards funded from sponsor spend."
+        },
+        "totalVerifiedViews": {
+          "type": "integer",
+          "description": "Total verified advert completions across all users."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last revenue update."
+        }
+      },
+      "required": [
+        "availableIncomeCents",
+        "lifetimeIncomeCents",
+        "withdrawnIncomeCents",
+        "grossSponsorCents",
+        "totalUserRewardsCents",
+        "totalVerifiedViews",
+        "updatedAt"
+      ]
+    },
+    "OwnerRevenueEntry": {
+      "title": "OwnerRevenueEntry",
+      "description": "Immutable per-view owner income ledger record created atomically when any user completes an advert watch.",
+      "type": "object",
+      "properties": {
+        "viewerUserId": {
+          "type": "string",
+          "description": "UID of the user who completed the advert watch."
+        },
+        "campaignId": {
+          "type": "string",
+          "description": "Watched campaign identifier."
+        },
+        "campaignTitle": {
+          "type": "string",
+          "description": "Watched campaign title."
+        },
+        "category": {
+          "type": "string",
+          "description": "Advert category."
+        },
+        "grossSponsorCents": {
+          "type": "integer",
+          "description": "Gross sponsor revenue paid for this view."
+        },
+        "userRewardCents": {
+          "type": "integer",
+          "description": "Viewer reward payout for this view."
+        },
+        "ownerIncomeCents": {
+          "type": "integer",
+          "description": "Net income credited to app owner account."
+        },
+        "preferenceMatched": {
+          "type": "boolean",
+          "description": "Whether the advert matched the viewer's preferred categories."
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "Calendar date key YYYY-MM-DD."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of revenue credit."
+        }
+      },
+      "required": [
+        "viewerUserId",
+        "campaignId",
+        "campaignTitle",
+        "category",
+        "grossSponsorCents",
+        "userRewardCents",
+        "ownerIncomeCents",
+        "preferenceMatched",
+        "dateKey",
+        "createdAt"
+      ]
+    },
+    "OwnerPayoutConfig": {
+      "title": "OwnerPayoutConfig",
+      "description": "App owner payout account configuration for withdrawing platform income.",
+      "type": "object",
+      "properties": {
+        "ownerEmail": {
+          "type": "string",
+          "description": "Verified owner email address."
+        },
+        "method": {
+          "type": "string",
+          "enum": ["PAYPAL", "BANK_ACH", "VENMO", "GIFT_CARD"],
+          "description": "Owner preferred payout rail."
+        },
+        "destinationLabel": {
+          "type": "string",
+          "description": "Owner payout destination (bank account or PayPal/Venmo handle)."
+        },
+        "autoSweepEnabled": {
+          "type": "boolean",
+          "description": "Whether automated weekly sweep preference is enabled."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last config update."
+        }
+      },
+      "required": [
+        "ownerEmail",
+        "method",
+        "destinationLabel",
+        "autoSweepEnabled",
+        "updatedAt"
+      ]
+    },
+    "OwnerPayoutRecord": {
+      "title": "OwnerPayoutRecord",
+      "description": "Immutable owner income withdrawal record.",
+      "type": "object",
+      "properties": {
+        "ownerEmail": {
+          "type": "string",
+          "description": "Verified owner email."
+        },
+        "amountCents": {
+          "type": "integer",
+          "description": "Withdrawn owner income amount in USD cents."
+        },
+        "method": {
+          "type": "string",
+          "enum": ["PAYPAL", "BANK_ACH", "VENMO", "GIFT_CARD"],
+          "description": "Payout rail used."
+        },
+        "destinationLabel": {
+          "type": "string",
+          "description": "Owner payout destination."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PROCESSING", "COMPLETED", "CANCELLED"],
+          "description": "Settlement status."
+        },
+        "referenceCode": {
+          "type": "string",
+          "description": "Unique owner payout reference code."
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "Calendar date key YYYY-MM-DD."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of withdrawal."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "ownerEmail",
+        "amountCents",
+        "method",
+        "destinationLabel",
+        "status",
+        "referenceCode",
+        "dateKey",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ReferralCode": {
+      "title": "ReferralCode",
+      "description": "Unique shareable invite code owned by a user (stores zero PII). Clients must submit FieldValue.serverTimestamp() for createdAt.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Unique uppercase alphanumeric referral code matching the document ID."
+        },
+        "ownerUserId": {
+          "type": "string",
+          "description": "Firebase UID of the user who owns this referral code."
+        },
+        "ownerFirstName": {
+          "type": "string",
+          "description": "First name of the referrer shown to invitees."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of code registration."
+        }
+      },
+      "required": [
+        "code",
+        "ownerUserId",
+        "ownerFirstName",
+        "createdAt"
+      ]
+    },
+    "ReferralRecord": {
+      "title": "ReferralRecord",
+      "description": "Tracks an invitee's referral relationship and 3-ad milestone bonus status, keyed by inviteeUserId. Clients must submit FieldValue.serverTimestamp() for createdAt and updatedAt.",
+      "type": "object",
+      "properties": {
+        "referralCode": {
+          "type": "string",
+          "description": "Referral code redeemed by the invitee."
+        },
+        "referrerUserId": {
+          "type": "string",
+          "description": "Firebase UID of the inviting user."
+        },
+        "referrerFirstName": {
+          "type": "string",
+          "description": "First name of the inviting user."
+        },
+        "inviteeUserId": {
+          "type": "string",
+          "description": "Firebase UID of the invited user matching document ID."
+        },
+        "inviteeFirstName": {
+          "type": "string",
+          "description": "First name of the invited user."
+        },
+        "adsCompleted": {
+          "type": "integer",
+          "description": "Number of ads watched by the invitee since applying the referral code."
+        },
+        "requiredAds": {
+          "type": "integer",
+          "description": "Number of ads required to unlock the dual referral bonus (3)."
+        },
+        "bonusCents": {
+          "type": "integer",
+          "description": "Bonus cash reward in USD cents earned by each party (50)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "COMPLETED"],
+          "description": "Whether the invitee has reached the required ad watch milestone."
+        },
+        "inviteeCredited": {
+          "type": "boolean",
+          "description": "Whether the invitee has received their referral bonus."
+        },
+        "referrerCredited": {
+          "type": "boolean",
+          "description": "Whether the referrer has claimed their referral bonus."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when referral was linked."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last status update."
+        }
+      },
+      "required": [
+        "referralCode",
+        "referrerUserId",
+        "referrerFirstName",
+        "inviteeUserId",
+        "inviteeFirstName",
+        "adsCompleted",
+        "requiredAds",
+        "bonusCents",
+        "status",
+        "inviteeCredited",
+        "referrerCredited",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "User wallet profile, balances, and daily earnings goals."
+    },
+    "/users/{userId}/adViews/{viewId}": {
+      "schema": {
+        "$ref": "#/entities/AdViewRecord"
+      },
+      "description": "Per-user immutable ledger of completed advert views."
+    },
+    "/users/{userId}/dailyStats/{dateKey}": {
+      "schema": {
+        "$ref": "#/entities/DailyEarningsStat"
+      },
+      "description": "Per-user daily earnings and watch-time analytics summaries."
+    },
+    "/users/{userId}/payouts/{payoutId}": {
+      "schema": {
+        "$ref": "#/entities/PayoutRecord"
+      },
+      "description": "Per-user cashout withdrawal requests and settlement history."
+    },
+    "/users/{userId}/paymentSettings/{settingId}": {
+      "schema": {
+        "$ref": "#/entities/LinkedPaymentMethod"
+      },
+      "description": "Per-user linked preferred payment withdrawal method."
+    },
+    "/ownerRevenueSummary/{summaryId}": {
+      "schema": {
+        "$ref": "#/entities/OwnerRevenueSummary"
+      },
+      "description": "Singleton global platform owner income summary document."
+    },
+    "/ownerRevenueEntries/{entryId}": {
+      "schema": {
+        "$ref": "#/entities/OwnerRevenueEntry"
+      },
+      "description": "Immutable ledger of owner income credits generated by user advert views."
+    },
+    "/ownerSettings/{settingId}": {
+      "schema": {
+        "$ref": "#/entities/OwnerPayoutConfig"
+      },
+      "description": "Owner payout destination configuration."
+    },
+    "/ownerPayouts/{payoutId}": {
+      "schema": {
+        "$ref": "#/entities/OwnerPayoutRecord"
+      },
+      "description": "Owner income withdrawal history."
+    },
+    "/referralCodes/{code}": {
+      "schema": {
+        "$ref": "#/entities/ReferralCode"
+      },
+      "description": "Unique shareable referral codes mapped to owner UIDs."
+    },
+    "/referrals/{referralId}": {
+      "schema": {
+        "$ref": "#/entities/ReferralRecord"
+      },
+      "description": "Per-invitee referral tracking and dual cash bonus settlement state."
+    }
+  }
+}

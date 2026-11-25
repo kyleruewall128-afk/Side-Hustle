@@ -1,0 +1,640 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Bootstrapped app owner with strict verified-email guard
+    function isAppOwner() {
+      return isSignedIn() &&
+             request.auth.token.email == 'kyleruewall128@gmail.com' &&
+             request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidDateKey(dateKey) {
+      return dateKey is string && dateKey.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isValidReferralCode(code) {
+      return code is string && code.size() >= 6 && code.size() <= 12 && code.matches('^[A-Z0-9]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 60 &&
+             data.email is string && data.email.size() <= 120 &&
+             data.availableCents is int && data.availableCents >= 0 && data.availableCents <= 10000000 &&
+             data.lifetimeEarnedCents is int && data.lifetimeEarnedCents >= 0 && data.lifetimeEarnedCents <= 10000000 &&
+             data.totalWithdrawnCents is int && data.totalWithdrawnCents >= 0 && data.totalWithdrawnCents <= 10000000 &&
+             data.lifetimeEarnedCents >= data.availableCents &&
+             data.totalAdsWatched is int && data.totalAdsWatched >= 0 && data.totalAdsWatched <= 1000000 &&
+             data.totalWatchSeconds is int && data.totalWatchSeconds >= 0 && data.totalWatchSeconds <= 100000000 &&
+             data.dailyGoalCents is int && data.dailyGoalCents >= 10 && data.dailyGoalCents <= 50000 &&
+             data.currentStreakDays is int && data.currentStreakDays >= 0 && data.currentStreakDays <= 36500 &&
+             data.lastActiveDate is string && (data.lastActiveDate == '' || isValidDateKey(data.lastActiveDate)) &&
+             data.preferredCategories is list && data.preferredCategories.size() <= 10 &&
+             (data.preferredCategories.size() == 0 || (data.preferredCategories[0] is string && data.preferredCategories[0].size() >= 1 && data.preferredCategories[0].size() <= 30)) &&
+             (!('lastReferralClaimId' in data) || isValidId(data.lastReferralClaimId)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidAdView(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.campaignId is string && data.campaignId.size() >= 1 && data.campaignId.size() <= 64 && data.campaignId.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.campaignTitle is string && data.campaignTitle.size() >= 1 && data.campaignTitle.size() <= 100 &&
+             data.sponsorName is string && data.sponsorName.size() >= 1 && data.sponsorName.size() <= 60 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+             data.durationSeconds is int && data.durationSeconds >= 5 && data.durationSeconds <= 120 &&
+             data.rewardCents is int && data.rewardCents >= 1 && data.rewardCents <= 500 &&
+             isValidDateKey(data.dateKey) &&
+             data.hourOfDay is int && data.hourOfDay >= 0 && data.hourOfDay <= 23 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidDailyStat(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             isValidDateKey(data.dateKey) &&
+             data.earnedCents is int && data.earnedCents >= 1 && data.earnedCents <= 1000000 &&
+             data.adsWatched is int && data.adsWatched >= 1 && data.adsWatched <= 10000 &&
+             data.watchSeconds is int && data.watchSeconds >= 5 && data.watchSeconds <= 86400 &&
+             data.topCategory is string && data.topCategory.size() >= 1 && data.topCategory.size() <= 40 &&
+             data.bonusCents is int && data.bonusCents >= 0 && data.bonusCents <= 50000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidPayout(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.amountCents is int && data.amountCents >= 100 && data.amountCents <= 100000 &&
+             data.method in ['PAYPAL', 'BANK_ACH', 'VENMO', 'GIFT_CARD'] &&
+             data.destinationLabel is string && data.destinationLabel.size() >= 3 && data.destinationLabel.size() <= 120 &&
+             data.status in ['PROCESSING', 'COMPLETED', 'CANCELLED'] &&
+             data.referenceCode is string && data.referenceCode.size() >= 4 && data.referenceCode.size() <= 32 &&
+             isValidDateKey(data.dateKey) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidLinkedPaymentMethod(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.method in ['PAYPAL', 'BANK_ACH', 'VENMO', 'GIFT_CARD'] &&
+             data.accountHolderName is string && data.accountHolderName.size() >= 2 && data.accountHolderName.size() <= 80 &&
+             data.maskedDestination is string && data.maskedDestination.size() >= 3 && data.maskedDestination.size() <= 120 &&
+             data.bankName is string && data.bankName.size() <= 60 &&
+             data.accountType in ['', 'CHECKING', 'SAVINGS'] &&
+             data.accountLast4 is string && (data.accountLast4 == '' || data.accountLast4.matches('^\\d{4}$')) &&
+             data.routingLast4 is string && (data.routingLast4 == '' || data.routingLast4.matches('^\\d{4}$')) &&
+             (
+               data.method != 'BANK_ACH' || (
+                 data.bankName.size() >= 2 &&
+                 data.accountType in ['CHECKING', 'SAVINGS'] &&
+                 data.accountLast4.matches('^\\d{4}$') &&
+                 data.routingLast4.matches('^\\d{4}$')
+               )
+             ) &&
+             data.autoPayoutEnabled is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidOwnerSummary(data) {
+      return data.availableIncomeCents is int && data.availableIncomeCents >= 0 && data.availableIncomeCents <= 100000000 &&
+             data.lifetimeIncomeCents is int && data.lifetimeIncomeCents >= 0 && data.lifetimeIncomeCents <= 100000000 &&
+             data.withdrawnIncomeCents is int && data.withdrawnIncomeCents >= 0 && data.withdrawnIncomeCents <= 100000000 &&
+             data.lifetimeIncomeCents >= data.availableIncomeCents &&
+             data.grossSponsorCents is int && data.grossSponsorCents >= 0 && data.grossSponsorCents <= 500000000 &&
+             data.totalUserRewardsCents is int && data.totalUserRewardsCents >= 0 && data.totalUserRewardsCents <= 500000000 &&
+             data.totalVerifiedViews is int && data.totalVerifiedViews >= 0 && data.totalVerifiedViews <= 100000000 &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidOwnerRevenueEntry(data) {
+      return data.viewerUserId is string && isValidId(data.viewerUserId) &&
+             data.campaignId is string && data.campaignId.size() >= 1 && data.campaignId.size() <= 64 && data.campaignId.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.campaignTitle is string && data.campaignTitle.size() >= 1 && data.campaignTitle.size() <= 100 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+             data.grossSponsorCents is int && data.grossSponsorCents >= 5 && data.grossSponsorCents <= 1000 &&
+             data.userRewardCents is int && data.userRewardCents >= 2 && data.userRewardCents <= 500 &&
+             data.ownerIncomeCents is int && data.ownerIncomeCents >= 3 && data.ownerIncomeCents <= 600 &&
+             (data.grossSponsorCents - data.userRewardCents) == data.ownerIncomeCents &&
+             (data.userRewardCents * 100) == (data.grossSponsorCents * 40) &&
+             (data.ownerIncomeCents * 100) == (data.grossSponsorCents * 60) &&
+             data.preferenceMatched is bool &&
+             isValidDateKey(data.dateKey) &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidOwnerPayoutConfig(data) {
+      return data.ownerEmail is string && data.ownerEmail.size() >= 5 && data.ownerEmail.size() <= 120 &&
+             data.method in ['PAYPAL', 'BANK_ACH', 'VENMO', 'GIFT_CARD'] &&
+             data.destinationLabel is string && data.destinationLabel.size() >= 3 && data.destinationLabel.size() <= 120 &&
+             data.autoSweepEnabled is bool &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidOwnerPayout(data) {
+      return data.ownerEmail is string && data.ownerEmail == 'kyleruewall128@gmail.com' &&
+             data.amountCents is int && data.amountCents >= 100 && data.amountCents <= 10000000 &&
+             data.method in ['PAYPAL', 'BANK_ACH', 'VENMO', 'GIFT_CARD'] &&
+             data.destinationLabel is string && data.destinationLabel.size() >= 3 && data.destinationLabel.size() <= 120 &&
+             data.status in ['PROCESSING', 'COMPLETED', 'CANCELLED'] &&
+             data.referenceCode is string && data.referenceCode.size() >= 4 && data.referenceCode.size() <= 32 &&
+             isValidDateKey(data.dateKey) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidReferralCodeDoc(data) {
+      return data.code is string && isValidReferralCode(data.code) &&
+             data.ownerUserId is string && isValidId(data.ownerUserId) &&
+             data.ownerFirstName is string && data.ownerFirstName.size() >= 1 && data.ownerFirstName.size() <= 30 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidReferralRecord(data) {
+      return data.referralCode is string && isValidReferralCode(data.referralCode) &&
+             data.referrerUserId is string && isValidId(data.referrerUserId) &&
+             data.referrerFirstName is string && data.referrerFirstName.size() >= 1 && data.referrerFirstName.size() <= 30 &&
+             data.inviteeUserId is string && isValidId(data.inviteeUserId) &&
+             data.referrerUserId != data.inviteeUserId &&
+             data.inviteeFirstName is string && data.inviteeFirstName.size() >= 1 && data.inviteeFirstName.size() <= 30 &&
+             data.adsCompleted is int && data.adsCompleted >= 0 && data.adsCompleted <= 3 &&
+             data.requiredAds == 3 &&
+             data.bonusCents == 50 &&
+             data.status in ['PENDING', 'COMPLETED'] &&
+             data.inviteeCredited is bool &&
+             data.referrerCredited is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == userId &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'email',
+                         'availableCents', 'lifetimeEarnedCents', 'totalWithdrawnCents',
+                         'totalAdsWatched', 'totalWatchSeconds', 'dailyGoalCents',
+                         'currentStreakDays', 'lastActiveDate', 'preferredCategories',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'email',
+                         'availableCents', 'lifetimeEarnedCents', 'totalWithdrawnCents',
+                         'totalAdsWatched', 'totalWatchSeconds', 'dailyGoalCents',
+                         'currentStreakDays', 'lastActiveDate', 'preferredCategories',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().availableCents == 0 &&
+                       incoming().lifetimeEarnedCents == 0 &&
+                       incoming().totalWithdrawnCents == 0 &&
+                       incoming().totalAdsWatched == 0 &&
+                       incoming().totalWatchSeconds == 0 &&
+                       incoming().currentStreakDays == 0 &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Action 1: Update profile display name, daily goal, or ad category preferences
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['dailyGoalCents', 'displayName', 'preferredCategories', 'updatedAt'])
+                         ) ||
+                         // Action 2: Record verified advert watch reward + streak update
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'availableCents', 'lifetimeEarnedCents',
+                             'totalAdsWatched', 'totalWatchSeconds',
+                             'currentStreakDays', 'lastActiveDate', 'updatedAt'
+                           ]) &&
+                           incoming().availableCents > existing().availableCents &&
+                           incoming().availableCents <= existing().availableCents + 500 &&
+                           (incoming().lifetimeEarnedCents - existing().lifetimeEarnedCents) == (incoming().availableCents - existing().availableCents) &&
+                           incoming().totalAdsWatched == existing().totalAdsWatched + 1 &&
+                           incoming().totalWatchSeconds > existing().totalWatchSeconds &&
+                           incoming().totalWatchSeconds <= existing().totalWatchSeconds + 120 &&
+                           incoming().currentStreakDays >= 1 &&
+                           incoming().currentStreakDays <= existing().currentStreakDays + 1 &&
+                           isValidDateKey(incoming().lastActiveDate)
+                         ) ||
+                         // Action 3: Atomic cashout deduction
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'availableCents', 'totalWithdrawnCents', 'updatedAt'
+                           ]) &&
+                           incoming().availableCents < existing().availableCents &&
+                           (existing().availableCents - incoming().availableCents) >= 100 &&
+                           (incoming().totalWithdrawnCents - existing().totalWithdrawnCents) == (existing().availableCents - incoming().availableCents)
+                         ) ||
+                         // Action 4: Atomic claim of completed referrer bonus (+50c)
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'availableCents', 'lifetimeEarnedCents', 'lastReferralClaimId', 'updatedAt'
+                           ]) &&
+                           'lastReferralClaimId' in incoming() &&
+                           isValidId(incoming().lastReferralClaimId) &&
+                           (incoming().availableCents - existing().availableCents) == 50 &&
+                           (incoming().lifetimeEarnedCents - existing().lifetimeEarnedCents) == 50 &&
+                           get(/databases/$(database)/documents/referrals/$(incoming().lastReferralClaimId)).data.referrerUserId == userId &&
+                           get(/databases/$(database)/documents/referrals/$(incoming().lastReferralClaimId)).data.status == 'COMPLETED' &&
+                           get(/databases/$(database)/documents/referrals/$(incoming().lastReferralClaimId)).data.referrerCredited == false &&
+                           getAfter(/databases/$(database)/documents/referrals/$(incoming().lastReferralClaimId)).data.referrerCredited == true
+                         )
+                       );
+
+      allow delete: if false;
+
+      match /adViews/{viewId} {
+        allow get: if isOwner(userId) && isValidId(viewId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(viewId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll([
+                           'userId', 'campaignId', 'campaignTitle', 'sponsorName',
+                           'category', 'durationSeconds', 'rewardCents',
+                           'dateKey', 'hourOfDay', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'campaignId', 'campaignTitle', 'sponsorName',
+                           'category', 'durationSeconds', 'rewardCents',
+                           'dateKey', 'hourOfDay', 'createdAt'
+                         ]) &&
+                         isValidAdView(incoming());
+
+        allow update, delete: if false;
+      }
+
+      match /dailyStats/{dateKey} {
+        allow get: if isOwner(userId) && isValidDateKey(dateKey);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidDateKey(dateKey) &&
+                         incoming().userId == userId &&
+                         incoming().dateKey == dateKey &&
+                         incoming().keys().hasAll([
+                           'userId', 'dateKey', 'earnedCents', 'adsWatched',
+                           'watchSeconds', 'topCategory', 'bonusCents',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'dateKey', 'earnedCents', 'adsWatched',
+                           'watchSeconds', 'topCategory', 'bonusCents',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().earnedCents >= 1 && incoming().earnedCents <= 500 &&
+                         incoming().adsWatched == 1 &&
+                         incoming().watchSeconds >= 5 && incoming().watchSeconds <= 120 &&
+                         incoming().bonusCents <= 250 &&
+                         isValidDailyStat(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidDateKey(dateKey) &&
+                         isValidDailyStat(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().dateKey == existing().dateKey &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'earnedCents', 'adsWatched', 'watchSeconds',
+                           'topCategory', 'bonusCents', 'updatedAt'
+                         ]) &&
+                         incoming().earnedCents > existing().earnedCents &&
+                         incoming().earnedCents <= existing().earnedCents + 500 &&
+                         incoming().adsWatched == existing().adsWatched + 1 &&
+                         incoming().watchSeconds > existing().watchSeconds &&
+                         incoming().watchSeconds <= existing().watchSeconds + 120 &&
+                         incoming().bonusCents >= existing().bonusCents &&
+                         incoming().bonusCents <= existing().bonusCents + 250;
+
+        allow delete: if false;
+      }
+
+      match /payouts/{payoutId} {
+        allow get: if isOwner(userId) && isValidId(payoutId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(payoutId) &&
+                         incoming().userId == userId &&
+                         incoming().status == 'PROCESSING' &&
+                         incoming().keys().hasAll([
+                           'userId', 'amountCents', 'method', 'destinationLabel',
+                           'status', 'referenceCode', 'dateKey', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'amountCents', 'method', 'destinationLabel',
+                           'status', 'referenceCode', 'dateKey', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidPayout(incoming()) &&
+                         get(/databases/$(database)/documents/users/$(userId)).data.availableCents >= incoming().amountCents &&
+                         getAfter(/databases/$(database)/documents/users/$(userId)).data.availableCents ==
+                           (get(/databases/$(database)/documents/users/$(userId)).data.availableCents - incoming().amountCents);
+
+        allow update, delete: if false;
+      }
+
+      match /paymentSettings/{settingId} {
+        allow get: if isOwner(userId) && settingId == 'preferredMethod';
+        allow list: if false;
+
+        allow create: if isOwner(userId) &&
+                         settingId == 'preferredMethod' &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll([
+                           'userId', 'method', 'accountHolderName', 'maskedDestination',
+                           'bankName', 'accountType', 'accountLast4', 'routingLast4',
+                           'autoPayoutEnabled', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'method', 'accountHolderName', 'maskedDestination',
+                           'bankName', 'accountType', 'accountLast4', 'routingLast4',
+                           'autoPayoutEnabled', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidLinkedPaymentMethod(incoming());
+
+        allow update: if isOwner(userId) &&
+                         settingId == 'preferredMethod' &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().keys().hasAll([
+                           'userId', 'method', 'accountHolderName', 'maskedDestination',
+                           'bankName', 'accountType', 'accountLast4', 'routingLast4',
+                           'autoPayoutEnabled', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'method', 'accountHolderName', 'maskedDestination',
+                           'bankName', 'accountType', 'accountLast4', 'routingLast4',
+                           'autoPayoutEnabled', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidLinkedPaymentMethod(incoming());
+
+        allow delete: if isOwner(userId) && settingId == 'preferredMethod';
+      }
+    }
+
+    // Platform Owner Revenue Account (credited atomically when users watch ads; readable/withdrawable ONLY by verified owner)
+    match /ownerRevenueSummary/{summaryId} {
+      allow get: if isAppOwner() && summaryId == 'global';
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       summaryId == 'global' &&
+                       incoming().keys().hasAll([
+                         'availableIncomeCents', 'lifetimeIncomeCents', 'withdrawnIncomeCents',
+                         'grossSponsorCents', 'totalUserRewardsCents', 'totalVerifiedViews', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'availableIncomeCents', 'lifetimeIncomeCents', 'withdrawnIncomeCents',
+                         'grossSponsorCents', 'totalUserRewardsCents', 'totalVerifiedViews', 'updatedAt'
+                       ]) &&
+                       incoming().withdrawnIncomeCents == 0 &&
+                       incoming().availableIncomeCents == incoming().lifetimeIncomeCents &&
+                       incoming().availableIncomeCents <= 600 &&
+                       incoming().totalVerifiedViews <= 1 &&
+                       incoming().grossSponsorCents == (incoming().availableIncomeCents + incoming().totalUserRewardsCents) &&
+                       (incoming().availableIncomeCents * 2) == (incoming().totalUserRewardsCents * 3) &&
+                       isValidOwnerSummary(incoming());
+
+      allow update: if isSignedIn() &&
+                       summaryId == 'global' &&
+                       isValidOwnerSummary(incoming()) && (
+                         // Action 1: Viewer ad-watch income credit (60% owner / 40% user split)
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'availableIncomeCents', 'lifetimeIncomeCents', 'withdrawnIncomeCents',
+                             'grossSponsorCents', 'totalUserRewardsCents', 'totalVerifiedViews', 'updatedAt'
+                           ]) &&
+                           incoming().withdrawnIncomeCents == existing().withdrawnIncomeCents &&
+                           incoming().availableIncomeCents > existing().availableIncomeCents &&
+                           incoming().availableIncomeCents <= existing().availableIncomeCents + 600 &&
+                           (incoming().lifetimeIncomeCents - existing().lifetimeIncomeCents) ==
+                             (incoming().availableIncomeCents - existing().availableIncomeCents) &&
+                           incoming().totalVerifiedViews == existing().totalVerifiedViews + 1 &&
+                           incoming().grossSponsorCents > existing().grossSponsorCents &&
+                           incoming().grossSponsorCents <= existing().grossSponsorCents + 1000 &&
+                           incoming().totalUserRewardsCents > existing().totalUserRewardsCents &&
+                           incoming().totalUserRewardsCents <= existing().totalUserRewardsCents + 500 &&
+                           ((incoming().availableIncomeCents - existing().availableIncomeCents) * 2) ==
+                             ((incoming().totalUserRewardsCents - existing().totalUserRewardsCents) * 3) &&
+                           (incoming().grossSponsorCents - existing().grossSponsorCents) ==
+                             ((incoming().availableIncomeCents - existing().availableIncomeCents) +
+                              (incoming().totalUserRewardsCents - existing().totalUserRewardsCents))
+                         ) ||
+                         // Action 2: Owner income withdrawal
+                         (
+                           isAppOwner() &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'availableIncomeCents', 'withdrawnIncomeCents', 'updatedAt'
+                           ]) &&
+                           incoming().availableIncomeCents < existing().availableIncomeCents &&
+                           (existing().availableIncomeCents - incoming().availableIncomeCents) >= 100 &&
+                           (incoming().withdrawnIncomeCents - existing().withdrawnIncomeCents) ==
+                             (existing().availableIncomeCents - incoming().availableIncomeCents)
+                         )
+                       );
+
+      allow delete: if false;
+    }
+
+    match /ownerRevenueEntries/{entryId} {
+      allow get: if isAppOwner() && isValidId(entryId);
+      allow list: if isAppOwner();
+
+      allow create: if isSignedIn() &&
+                       isValidId(entryId) &&
+                       incoming().viewerUserId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'viewerUserId', 'campaignId', 'campaignTitle', 'category',
+                         'grossSponsorCents', 'userRewardCents', 'ownerIncomeCents',
+                         'preferenceMatched', 'dateKey', 'createdAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'viewerUserId', 'campaignId', 'campaignTitle', 'category',
+                         'grossSponsorCents', 'userRewardCents', 'ownerIncomeCents',
+                         'preferenceMatched', 'dateKey', 'createdAt'
+                       ]) &&
+                       isValidOwnerRevenueEntry(incoming()) &&
+                       existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/adViews/$(entryId));
+
+      allow update, delete: if false;
+    }
+
+    match /ownerSettings/{settingId} {
+      allow get: if isAppOwner() && settingId == 'payoutConfig';
+      allow list: if false;
+
+      allow create, update: if isAppOwner() &&
+                               settingId == 'payoutConfig' &&
+                               incoming().ownerEmail == 'kyleruewall128@gmail.com' &&
+                               incoming().keys().hasAll([
+                                 'ownerEmail', 'method', 'destinationLabel', 'autoSweepEnabled', 'updatedAt'
+                               ]) &&
+                               incoming().keys().hasOnly([
+                                 'ownerEmail', 'method', 'destinationLabel', 'autoSweepEnabled', 'updatedAt'
+                               ]) &&
+                               isValidOwnerPayoutConfig(incoming());
+
+      allow delete: if false;
+    }
+
+    match /ownerPayouts/{payoutId} {
+      allow get: if isAppOwner() && isValidId(payoutId);
+      allow list: if isAppOwner();
+
+      allow create: if isAppOwner() &&
+                       isValidId(payoutId) &&
+                       incoming().ownerEmail == 'kyleruewall128@gmail.com' &&
+                       incoming().status == 'PROCESSING' &&
+                       incoming().keys().hasAll([
+                         'ownerEmail', 'amountCents', 'method', 'destinationLabel',
+                         'status', 'referenceCode', 'dateKey', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'ownerEmail', 'amountCents', 'method', 'destinationLabel',
+                         'status', 'referenceCode', 'dateKey', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidOwnerPayout(incoming()) &&
+                       get(/databases/$(database)/documents/ownerRevenueSummary/global).data.availableIncomeCents >= incoming().amountCents &&
+                       getAfter(/databases/$(database)/documents/ownerRevenueSummary/global).data.availableIncomeCents ==
+                         (get(/databases/$(database)/documents/ownerRevenueSummary/global).data.availableIncomeCents - incoming().amountCents);
+
+      allow update, delete: if false;
+    }
+
+    // Shareable referral code lookup (exact code lookup only, zero PII, no collection scraping)
+    match /referralCodes/{code} {
+      allow get: if isSignedIn() && isValidReferralCode(code);
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       isValidReferralCode(code) &&
+                       incoming().code == code &&
+                       incoming().ownerUserId == request.auth.uid &&
+                       incoming().keys().hasAll(['code', 'ownerUserId', 'ownerFirstName', 'createdAt']) &&
+                       incoming().keys().hasOnly(['code', 'ownerUserId', 'ownerFirstName', 'createdAt']) &&
+                       isValidReferralCodeDoc(incoming());
+
+      allow update, delete: if false;
+    }
+
+    // Per-invitee referral tracking & milestone settlement (keyed by inviteeUserId to enforce 1 referral per invitee)
+    match /referrals/{referralId} {
+      allow get: if isSignedIn() &&
+                    isValidId(referralId) &&
+                    (
+                      request.auth.uid == referralId ||
+                      (resource != null && resource.data.referrerUserId == request.auth.uid)
+                    );
+
+      allow list: if isSignedIn() && resource.data.referrerUserId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(referralId) &&
+                       referralId == request.auth.uid &&
+                       incoming().inviteeUserId == request.auth.uid &&
+                       incoming().adsCompleted == 0 &&
+                       incoming().requiredAds == 3 &&
+                       incoming().bonusCents == 50 &&
+                       incoming().status == 'PENDING' &&
+                       incoming().inviteeCredited == false &&
+                       incoming().referrerCredited == false &&
+                       incoming().keys().hasAll([
+                         'referralCode', 'referrerUserId', 'referrerFirstName',
+                         'inviteeUserId', 'inviteeFirstName', 'adsCompleted',
+                         'requiredAds', 'bonusCents', 'status',
+                         'inviteeCredited', 'referrerCredited', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'referralCode', 'referrerUserId', 'referrerFirstName',
+                         'inviteeUserId', 'inviteeFirstName', 'adsCompleted',
+                         'requiredAds', 'bonusCents', 'status',
+                         'inviteeCredited', 'referrerCredited', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidReferralRecord(incoming()) &&
+                       exists(/databases/$(database)/documents/referralCodes/$(incoming().referralCode)) &&
+                       get(/databases/$(database)/documents/referralCodes/$(incoming().referralCode)).data.ownerUserId == incoming().referrerUserId;
+
+      allow update: if isSignedIn() &&
+                       isValidId(referralId) &&
+                       isValidReferralRecord(incoming()) &&
+                       incoming().referralCode == existing().referralCode &&
+                       incoming().referrerUserId == existing().referrerUserId &&
+                       incoming().inviteeUserId == existing().inviteeUserId &&
+                       incoming().requiredAds == existing().requiredAds &&
+                       incoming().bonusCents == existing().bonusCents &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Action 1: Invitee progresses 0 -> 1 -> 2 -> 3 ads watched
+                         (
+                           existing().inviteeUserId == request.auth.uid &&
+                           existing().status == 'PENDING' &&
+                           existing().inviteeCredited == false &&
+                           incoming().referrerCredited == existing().referrerCredited &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'adsCompleted', 'status', 'inviteeCredited', 'updatedAt'
+                           ]) &&
+                           incoming().adsCompleted == existing().adsCompleted + 1 &&
+                           incoming().adsCompleted <= existing().requiredAds && (
+                             (
+                               incoming().adsCompleted < existing().requiredAds &&
+                               incoming().status == 'PENDING' &&
+                               incoming().inviteeCredited == false
+                             ) ||
+                             (
+                               incoming().adsCompleted == existing().requiredAds &&
+                               incoming().status == 'COMPLETED' &&
+                               incoming().inviteeCredited == true
+                             )
+                           )
+                         ) ||
+                         // Action 2: Referrer atomically claims +50c bonus paired with user profile credit
+                         (
+                           existing().referrerUserId == request.auth.uid &&
+                           existing().status == 'COMPLETED' &&
+                           existing().referrerCredited == false &&
+                           incoming().status == existing().status &&
+                           incoming().adsCompleted == existing().adsCompleted &&
+                           incoming().inviteeCredited == existing().inviteeCredited &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'referrerCredited', 'updatedAt'
+                           ]) &&
+                           incoming().referrerCredited == true &&
+                           getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.lastReferralClaimId == referralId
+                         )
+                       );
+
+      allow delete: if false;
+    }
+  }
+}

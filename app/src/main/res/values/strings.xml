@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Side Hustle</string>
+    <string name="tagline">Watch Verified Adverts. Earn Real Cash.</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="nav_earn">Earn</string>
+    <string name="nav_analytics">Analytics</string>
+    <string name="nav_wallet">Wallet</string>
+    <string name="nav_income">Income</string>
+    <string name="daily_goal_label">Daily Goal</string>
+    <string name="available_balance">Available Balance</string>
+    <string name="watch_and_earn">Watch &amp; Earn</string>
+    <string name="cash_out_now">Cash Out Now</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="splash_title">Side Hustle</string>
+    <string name="splash_tagline">A real money making app like no other!</string>
+</resources>
